@@ -3,14 +3,14 @@ package com.digitalclock
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import kotlin.math.max
 
 /**
  * Minimal 7-segment digit renderer. Supports digits 0-9 and ':' separators.
- * Each segment is drawn as a chamfered hex bar, mimicking a classic LED/LCD look.
+ * Each segment is drawn as a rounded capsule bar, mimicking a classic LED/LCD look.
  */
 class SevenSegmentView @JvmOverloads constructor(
     context: Context,
@@ -21,7 +21,7 @@ class SevenSegmentView @JvmOverloads constructor(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
-    private val path = Path()
+    private val rect = RectF()
 
     var text: String = ""
         set(value) {
@@ -43,10 +43,10 @@ class SevenSegmentView @JvmOverloads constructor(
             if (field != value) { field = value; requestLayout(); invalidate() }
         }
 
-    private val thicknessRatio = 0.15f          // bar thickness vs digit height
-    private val digitWidthRatio = 0.58f         // digit width vs digit height
+    private val thicknessRatio = 0.18f          // bar thickness vs digit height
+    private val digitWidthRatio = 0.62f         // digit width vs digit height
     private val colonWidthRatio = 0.22f         // colon glyph width vs digit height
-    private val charSpacingRatio = 0.08f        // gap between glyphs
+    private val charSpacingRatio = 0.06f        // gap between glyphs
 
     private fun glyphWidth(ch: Char): Float = when (ch) {
         ':' -> digitHeight * colonWidthRatio
@@ -95,12 +95,11 @@ class SevenSegmentView @JvmOverloads constructor(
     private fun drawColon(canvas: Canvas, x: Float, y: Float, w: Float, h: Float) {
         val t = digitHeight * thicknessRatio
         val cx = x + w / 2f
-        // position the two dots roughly at the centres of the upper and lower halves
         val upperY = y + h * 0.33f
         val lowerY = y + h * 0.67f
-        val r = t * 0.55f
-        canvas.drawRoundRect(cx - r, upperY - r, cx + r, upperY + r, r * 0.4f, r * 0.4f, paint)
-        canvas.drawRoundRect(cx - r, lowerY - r, cx + r, lowerY + r, r * 0.4f, r * 0.4f, paint)
+        val r = t * 0.60f
+        canvas.drawRoundRect(cx - r, upperY - r, cx + r, upperY + r, r, r, paint)
+        canvas.drawRoundRect(cx - r, lowerY - r, cx + r, lowerY + r, r, r, paint)
     }
 
     /**
@@ -116,7 +115,7 @@ class SevenSegmentView @JvmOverloads constructor(
     private fun drawDigit(canvas: Canvas, digit: Int, x: Float, y: Float, w: Float, h: Float) {
         val mask = SEGMENT_MASKS[digit]
         val t = h * thicknessRatio
-        val gap = t * 0.06f
+        val gap = t * 0.04f
         val midY = y + h / 2f
         // Horizontal segments (a, g, d)
         if (mask and A != 0) drawHBar(canvas, x + t / 2 + gap, y, x + w - t / 2 - gap, y + t)
@@ -129,32 +128,18 @@ class SevenSegmentView @JvmOverloads constructor(
         if (mask and C != 0) drawVBar(canvas, x + w - t, midY + t / 2 + gap, x + w, y + h - t / 2 - gap)
     }
 
+    // Rounded capsule horizontal bar — pill-shaped segment like a real LED display.
     private fun drawHBar(canvas: Canvas, x0: Float, y0: Float, x1: Float, y1: Float) {
-        val t = y1 - y0
-        val h = t / 2f
-        path.rewind()
-        path.moveTo(x0 + h, y0)
-        path.lineTo(x1 - h, y0)
-        path.lineTo(x1, y0 + h)
-        path.lineTo(x1 - h, y1)
-        path.lineTo(x0 + h, y1)
-        path.lineTo(x0, y0 + h)
-        path.close()
-        canvas.drawPath(path, paint)
+        val r = (y1 - y0) / 2f
+        rect.set(x0, y0, x1, y1)
+        canvas.drawRoundRect(rect, r, r, paint)
     }
 
+    // Rounded capsule vertical bar.
     private fun drawVBar(canvas: Canvas, x0: Float, y0: Float, x1: Float, y1: Float) {
-        val t = x1 - x0
-        val h = t / 2f
-        path.rewind()
-        path.moveTo(x0, y0 + h)
-        path.lineTo(x0 + h, y0)
-        path.lineTo(x1, y0 + h)
-        path.lineTo(x1, y1 - h)
-        path.lineTo(x0 + h, y1)
-        path.lineTo(x0, y1 - h)
-        path.close()
-        canvas.drawPath(path, paint)
+        val r = (x1 - x0) / 2f
+        rect.set(x0, y0, x1, y1)
+        canvas.drawRoundRect(rect, r, r, paint)
     }
 
     companion object {

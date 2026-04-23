@@ -72,10 +72,11 @@ class MainActivity : ComponentActivity() {
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         }
         secondsView = SevenSegmentView(this).apply {
-            text = ":00"
+            text = "00"
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 // Align the smaller seconds glyphs with the bottom of the primary HH:MM glyphs.
                 gravity = Gravity.BOTTOM
+                leftMargin = (6 * resources.displayMetrics.density).toInt()
             }
         }
 
@@ -97,12 +98,13 @@ class MainActivity : ComponentActivity() {
 
     private fun sizeGlyphs(w: Int, h: Int) {
         if (w == 0 || h == 0) return
-        // Pick the primary digit height so the HH:MM + :SS row fits within ~88% of screen width.
-        // HH:MM: 4 digits×0.58 + colon×0.22 + 4 gaps×0.08 = 2.86h
-        // :SS at 60%: (colon×0.22 + 2 digits×0.58 + 2 gaps×0.08) × 0.6 = 1.54 × 0.6 = 0.924h
-        val targetWidth = w * 0.88f
-        val primaryByWidth = targetWidth / (2.86f + 0.924f)
-        val primaryByHeight = h * 0.34f
+        // Pick the primary digit height so the HH:MM + SS row fits within ~92% of screen width.
+        // HH:MM: 4 digits×0.62 + colon×0.22 + 4 gaps×0.06 = 2.94h
+        // SS at 60%: (2 digits×0.62 + 1 gap×0.06) × 0.6 = 1.22 × 0.6 = 0.732h
+        val dp = resources.displayMetrics.density
+        val targetWidth = w * 0.92f
+        val primaryByWidth = (targetWidth - 6 * dp) / (2.94f + 0.732f)
+        val primaryByHeight = h * 0.70f
         val primary = minOf(primaryByWidth, primaryByHeight).coerceAtLeast(32f)
         primaryView.digitHeight = primary
         secondsView.digitHeight = primary * 0.6f
@@ -142,7 +144,7 @@ class MainActivity : ComponentActivity() {
         val s = c.get(Calendar.SECOND)
         // HH:MM with no leading zero on the hour, to match the reference image.
         primaryView.text = String.format(Locale.US, "%d:%02d", h, m)
-        secondsView.text = String.format(Locale.US, ":%02d", s)
+        secondsView.text = String.format(Locale.US, "%02d", s)
     }
 
     companion object {
