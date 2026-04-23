@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+        A small "12:00" rendered in seven-segment style, centred in the 108x108 viewport.
+        Each lit segment is a filled rectangle. The adaptive-icon background provides the black.
+
+        Digit geometry (per digit):
+          height 30, width 18, segment thickness 4, digit gap 3
+          total glyph-string width = 4*18 + 6 (colon) + 4*3 (gaps) = 90
+          start x = 9, end x = 99, y_top = 39, y_bottom = 69
+    -->
+
+    <path
+        android:fillColor="#00E53A"
+        android:pathData="
+            M23 43 h4 v11 h-4 z
+            M23 54 h4 v11 h-4 z
+            M34 39 h10 v4 h-10 z
+            M44 43 h4 v11 h-4 z
+            M34 52 h10 v4 h-10 z
+            M30 54 h4 v11 h-4 z
+            M34 65 h10 v4 h-10 z
+            M52 47 h4 v4 h-4 z
+            M52 57 h4 v4 h-4 z
+            M64 39 h10 v4 h-10 z
+            M74 43 h4 v11 h-4 z
+            M74 54 h4 v11 h-4 z
+            M64 65 h10 v4 h-10 z
+            M60 54 h4 v11 h-4 z
+            M60 43 h4 v11 h-4 z
+            M85 39 h10 v4 h-10 z
+            M95 43 h4 v11 h-4 z
+            M95 54 h4 v11 h-4 z
+            M85 65 h10 v4 h-10 z
+            M81 54 h4 v11 h-4 z
+            M81 43 h4 v11 h-4 z
+        " />
+</vector>
