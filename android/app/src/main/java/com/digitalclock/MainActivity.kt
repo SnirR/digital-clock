@@ -23,6 +23,7 @@ import java.util.Locale
  */
 class MainActivity : ComponentActivity() {
 
+    private lateinit var rootView: FrameLayout
     private lateinit var primaryView: SevenSegmentView
     private lateinit var secondsView: SevenSegmentView
     private val handler = Handler(Looper.getMainLooper())
@@ -48,7 +49,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildLayout(): View {
-        val root = FrameLayout(this).apply {
+        rootView = FrameLayout(this).apply {
             setBackgroundColor(0xFF000000.toInt())
             layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         }
@@ -71,37 +72,36 @@ class MainActivity : ComponentActivity() {
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         }
         secondsView = SevenSegmentView(this).apply {
-            text = "00"
+            text = ":00"
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 // Align the smaller seconds glyphs with the bottom of the primary HH:MM glyphs.
                 gravity = Gravity.BOTTOM
-                leftMargin = (8 * resources.displayMetrics.density).toInt()
             }
         }
 
         row.addView(primaryView)
         row.addView(secondsView)
-        root.addView(row)
+        rootView.addView(row)
 
-        root.viewTreeObserver.addOnGlobalLayoutListener(object :
-            android.view.ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                root.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                sizeGlyphs(root.width, root.height)
+        // Re-size glyphs whenever the root view dimensions change (initial layout + rotation).
+        rootView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            val w = right - left
+            val h = bottom - top
+            if (w > 0 && h > 0 && (w != oldRight - oldLeft || h != oldBottom - oldTop)) {
+                handler.post { sizeGlyphs(w, h) }
             }
-        })
+        }
 
-        return root
+        return rootView
     }
 
     private fun sizeGlyphs(w: Int, h: Int) {
         if (w == 0 || h == 0) return
-        // Pick the primary digit height so the HH:MM + SS row fits within ~88% of the screen width.
-        // HH:MM width ≈ 3.02 * h (4 digits @0.58h + colon 0.22h + 4 gaps 0.12h)
-        // SS width at secondary ratio 0.6 ≈ 0.768 * h (2 digits + 1 gap, all scaled by 0.6)
-        val dp = resources.displayMetrics.density
+        // Pick the primary digit height so the HH:MM + :SS row fits within ~88% of screen width.
+        // HH:MM: 4 digits×0.58 + colon×0.22 + 4 gaps×0.08 = 2.86h
+        // :SS at 60%: (colon×0.22 + 2 digits×0.58 + 2 gaps×0.08) × 0.6 = 1.54 × 0.6 = 0.924h
         val targetWidth = w * 0.88f
-        val primaryByWidth = (targetWidth - 8 * dp) / (3.02f + 0.768f)
+        val primaryByWidth = targetWidth / (2.86f + 0.924f)
         val primaryByHeight = h * 0.34f
         val primary = minOf(primaryByWidth, primaryByHeight).coerceAtLeast(32f)
         primaryView.digitHeight = primary
@@ -117,10 +117,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Let the layout settle, then re-size glyphs for the new orientation.
-        window.decorView.post {
-            sizeGlyphs(window.decorView.width, window.decorView.height)
-        }
+        // Layout change listener on rootView handles re-sizing automatically.
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -145,7 +142,7 @@ class MainActivity : ComponentActivity() {
         val s = c.get(Calendar.SECOND)
         // HH:MM with no leading zero on the hour, to match the reference image.
         primaryView.text = String.format(Locale.US, "%d:%02d", h, m)
-        secondsView.text = String.format(Locale.US, "%02d", s)
+        secondsView.text = String.format(Locale.US, ":%02d", s)
     }
 
     companion object {

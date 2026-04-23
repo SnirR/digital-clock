@@ -43,10 +43,10 @@ class SevenSegmentView @JvmOverloads constructor(
             if (field != value) { field = value; requestLayout(); invalidate() }
         }
 
-    private val thicknessRatio = 0.14f          // bar thickness vs digit height
+    private val thicknessRatio = 0.15f          // bar thickness vs digit height
     private val digitWidthRatio = 0.58f         // digit width vs digit height
     private val colonWidthRatio = 0.22f         // colon glyph width vs digit height
-    private val charSpacingRatio = 0.12f        // gap between glyphs
+    private val charSpacingRatio = 0.08f        // gap between glyphs
 
     private fun glyphWidth(ch: Char): Float = when (ch) {
         ':' -> digitHeight * colonWidthRatio
@@ -116,7 +116,7 @@ class SevenSegmentView @JvmOverloads constructor(
     private fun drawDigit(canvas: Canvas, digit: Int, x: Float, y: Float, w: Float, h: Float) {
         val mask = SEGMENT_MASKS[digit]
         val t = h * thicknessRatio
-        val gap = t * 0.18f
+        val gap = t * 0.06f
         val midY = y + h / 2f
         // Horizontal segments (a, g, d)
         if (mask and A != 0) drawHBar(canvas, x + t / 2 + gap, y, x + w - t / 2 - gap, y + t)
