@@ -1,16 +1,20 @@
 package com.digitalclock
 
 import android.content.res.Configuration
+import android.graphics.Paint
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -18,14 +22,16 @@ import java.util.Calendar
 import java.util.Locale
 
 /**
- * Digital clock: large HH:MM + smaller SS to the right, green 7-segment over full-black screen.
- * Keeps the screen on, hides system bars (immersive), and supports rotation without state loss.
+ * Digital clock: large HH:MM + smaller SS to the right, green DSEG7 LCD font over
+ * a full-black screen. Keeps the screen on, hides system bars (immersive), and
+ * supports rotation without state loss.
  */
 class MainActivity : ComponentActivity() {
 
     private lateinit var rootView: FrameLayout
-    private lateinit var primaryView: SevenSegmentView
-    private lateinit var secondsView: SevenSegmentView
+    private lateinit var primaryView: TextView
+    private lateinit var secondsView: TextView
+    private val measurePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
@@ -49,6 +55,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildLayout(): View {
+        val dsegFont = ResourcesCompat.getFont(this, R.font.dseg7_bold)
+        measurePaint.typeface = dsegFont
+
         rootView = FrameLayout(this).apply {
             setBackgroundColor(0xFF000000.toInt())
             layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
@@ -56,7 +65,8 @@ class MainActivity : ComponentActivity() {
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            // Bottom-align so the smaller seconds glyphs sit on the same baseline as HH:MM.
+            gravity = Gravity.BOTTOM
             // Force LTR so the smaller seconds view always sits to the RIGHT of HH:MM,
             // regardless of the device's system language (Hebrew/Arabic would otherwise flip it).
             layoutDirection = View.LAYOUT_DIRECTION_LTR
@@ -67,16 +77,22 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        primaryView = SevenSegmentView(this).apply {
+        primaryView = TextView(this).apply {
             text = "00:00"
+            typeface = dsegFont
+            setTextColor(0xFF00E53A.toInt())
+            includeFontPadding = false
+            setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         }
-        secondsView = SevenSegmentView(this).apply {
+        secondsView = TextView(this).apply {
             text = "00"
+            typeface = dsegFont
+            setTextColor(0xFF00E53A.toInt())
+            includeFontPadding = false
+            setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                // Align the smaller seconds glyphs with the bottom of the primary HH:MM glyphs.
-                gravity = Gravity.BOTTOM
-                leftMargin = (6 * resources.displayMetrics.density).toInt()
+                leftMargin = (8 * resources.displayMetrics.density).toInt()
             }
         }
 
@@ -98,16 +114,27 @@ class MainActivity : ComponentActivity() {
 
     private fun sizeGlyphs(w: Int, h: Int) {
         if (w == 0 || h == 0) return
-        // Pick the primary digit height so the HH:MM + SS row fits within ~92% of screen width.
-        // HH:MM: 4 digits×0.62 + colon×0.22 + 4 gaps×0.06 = 2.94h
-        // SS at 60%: (2 digits×0.62 + 1 gap×0.06) × 0.6 = 1.22 × 0.6 = 0.732h
         val dp = resources.displayMetrics.density
-        val targetWidth = w * 0.92f
-        val primaryByWidth = (targetWidth - 6 * dp) / (2.94f + 0.732f)
-        val primaryByHeight = h * 0.70f
-        val primary = minOf(primaryByWidth, primaryByHeight).coerceAtLeast(32f)
-        primaryView.digitHeight = primary
-        secondsView.digitHeight = primary * 0.6f
+
+        // Measure primary + seconds text widths at a reference text size so we can scale
+        // them to fill ~92% of the screen width. DSEG7 is monospaced so "00:00" is the
+        // widest HH:MM we render.
+        measurePaint.textSize = 100f
+        val primaryWidthAtRef = measurePaint.measureText("00:00")
+        val secondsWidthAtRef = measurePaint.measureText("00")
+        val primaryRatio = primaryWidthAtRef / 100f
+        val secondsRatio = secondsWidthAtRef / 100f
+
+        val margin = 8 * dp
+        val targetWidth = w * 0.92f - margin
+        val primarySizeByWidth = targetWidth / (primaryRatio + SECONDS_SCALE * secondsRatio)
+        // DSEG7 digits fill most of the em box; cap at 70% of screen height.
+        val primarySizeByHeight = h * 0.70f
+        val primarySize = minOf(primarySizeByWidth, primarySizeByHeight)
+            .coerceAtLeast(16f * dp)
+
+        primaryView.setTextSize(TypedValue.COMPLEX_UNIT_PX, primarySize)
+        secondsView.setTextSize(TypedValue.COMPLEX_UNIT_PX, primarySize * SECONDS_SCALE)
     }
 
     private fun applyImmersiveMode() {
@@ -142,7 +169,6 @@ class MainActivity : ComponentActivity() {
         val h = c.get(Calendar.HOUR_OF_DAY)
         val m = c.get(Calendar.MINUTE)
         val s = c.get(Calendar.SECOND)
-        // HH:MM with no leading zero on the hour, to match the reference image.
         primaryView.text = String.format(Locale.US, "%d:%02d", h, m)
         secondsView.text = String.format(Locale.US, "%02d", s)
     }
@@ -150,5 +176,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val MATCH_PARENT = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP_CONTENT = ViewGroup.LayoutParams.WRAP_CONTENT
+        private const val SECONDS_SCALE = 0.6f
     }
 }
